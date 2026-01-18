@@ -1,0 +1,136 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"            
+  output   = "../src/generated/prisma" 
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  CONTESTEE
+  CREATOR
+}
+enum SubmissionStatus {
+  PENDING
+  ACCEPTED
+  WRONG_ANSWER
+  TIME_LIMIT_EXCEEDED
+  RUNTIME_ERROR
+  COMPILATION_ERROR
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  name      String?
+  password  String?
+  role      Role     @default(CONTESTEE)
+  createdAt DateTime @default(now())
+  contestsCreated Contest[]        @relation("ContestCreator")
+  mcqSubmissions  McqSubmission[]
+  dsaSubmissions  DsaSubmission[]
+}
+
+model Contest {
+  id        String   @id @default(uuid())
+  title       String
+  description String
+  startTime   DateTime
+  endTime     DateTime
+  createdAt   DateTime @default(now())
+ // Relations
+  creatorId   String
+  creator     User     @relation("ContestCreator", fields: [creatorId], references: [id])
+
+  mcqQuestions McqQuestion[]
+  dsaProblems  DsaProblem[]
+}
+
+
+model McqQuestion {
+  id                  String   @id @default(uuid())
+  questionText        String
+  options             Json
+  correctOptionIndex  Int
+  points              Int      @default(1)
+  createdAt           DateTime @default(now())
+
+  // Relations
+  contestId           String
+  contest             Contest  @relation(fields: [contestId], references: [id])
+
+  submissions         McqSubmission[]
+}
+
+model DsaProblem {
+  id            String   @id @default(uuid())
+  title         String
+  description   String
+  tags          Json
+  points        Int      @default(100)
+  timeLimit     Int      @default(2000) // ms
+  memoryLimit   Int      @default(256)  // MB
+  createdAt     DateTime @default(now())
+
+  // Relations
+  contestId     String
+  contest       Contest  @relation(fields: [contestId], references: [id])
+
+  testCases     TestCase[]
+  submissions   DsaSubmission[]
+}
+
+model TestCase {
+  id             String   @id @default(uuid())
+  input          String
+  expectedOutput String
+  isHidden       Boolean  @default(false)
+  createdAt      DateTime @default(now())
+
+  // Relations
+  problemId      String
+  problem        DsaProblem @relation(fields: [problemId], references: [id])
+}
+
+model McqSubmission {
+  id                   String   @id @default(uuid())
+  selectedOptionIndex  Int
+  isCorrect            Boolean
+  pointsEarned         Int      @default(0)
+  submittedAt          DateTime @default(now())
+
+  // Relations
+  userId               String
+  questionId           String
+
+  user                 User        @relation(fields: [userId], references: [id])
+  question             McqQuestion  @relation(fields: [questionId], references: [id])
+
+  @@unique([userId, questionId])
+}
+
+model DsaSubmission {
+  id               String   @id @default(uuid())
+  code             String
+  language         String
+  status           SubmissionStatus
+  pointsEarned     Int      @default(0)
+  testCasesPassed  Int      @default(0)
+  totalTestCases   Int      @default(0)
+  executionTime    Int?
+  submittedAt      DateTime @default(now())
+
+  // Relations
+  userId           String
+  problemId        String
+
+  user             User       @relation(fields: [userId], references: [id])
+  problem          DsaProblem @relation(fields: [problemId], references: [id])
+}

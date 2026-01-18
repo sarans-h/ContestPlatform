@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: contestplatform-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: contest
+      POSTGRES_PASSWORD: contest
+      POSTGRES_DB: contestdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - contestplatform_pgdata:/var/lib/postgresql/data
+
+volumes:
+  contestplatform_pgdata:
