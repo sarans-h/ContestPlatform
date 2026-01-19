@@ -1,7 +1,21 @@
 import type { NextFunction, Request, Response } from "express";
 import { parseBody, parseParam } from "../../lib/validation";
-import { addMcqQuestionSchema, contestIdParamSchema, createContestSchema } from "./contest.schema";
-import { addMcqQuestionToContest, createContest, getContestDetails } from "./contest.service";
+import {
+    addMcqQuestionSchema,
+    addDsaProblemSchema,
+    contestIdParamSchema,
+    createContestSchema,
+    submitMcqBodySchema,
+    submitMcqParamsSchema,
+} from "./contest.schema";
+import {
+    addDsaProblemToContest,
+    addMcqQuestionToContest,
+    createContest,
+    getContestLeaderboard,
+    getContestDetails,
+    submitMcqAnswer,
+} from "./contest.service";
 import { ok, fail } from "../../lib/response";
 
 export async function createContestHandler(req: Request, res: Response, next: NextFunction) {
@@ -34,8 +48,11 @@ export async function createContestHandler(req: Request, res: Response, next: Ne
 export async function getContestDetailsHandler(req: Request, res: Response, next: NextFunction) {
     try {
         if (!req.auth) return;
-        const params = parseParam(contestIdParamSchema, req.params, res);
-        if (!params) return;
+        const parsed = contestIdParamSchema.safeParse(req.params);
+        if (!parsed.success) {
+            return fail(res, "CONTEST_NOT_FOUND", 404);
+        }
+        const params = parsed.data;
 
         const contest = await getContestDetails(params.contestId, req.auth.role);
 
@@ -66,8 +83,11 @@ export async function addMcqQuestionHandler(req: Request, res: Response, next: N
     const body = parseBody(addMcqQuestionSchema, req.body, res);
     if (!body) return;
 
-    const params = parseParam(contestIdParamSchema, req.params, res);
-    if (!params) return;
+    const contestParamsParsed = contestIdParamSchema.safeParse(req.params);
+    if (!contestParamsParsed.success) {
+        return fail(res, "CONTEST_NOT_FOUND", 404);
+    }
+    const params = contestParamsParsed.data;
 
     try {
         const created = await addMcqQuestionToContest({
@@ -83,6 +103,91 @@ export async function addMcqQuestionHandler(req: Request, res: Response, next: N
         }
 
         return ok(res, { id: created.id, contestId: created.contestId }, 201);
+    } catch (err) {
+        return next(err);
+    }
+}
+
+export async function submitMcqAnswerHandler(req: Request, res: Response, next: NextFunction) {
+    const body = parseBody(submitMcqBodySchema, req.body, res);
+    if (!body) return;
+
+    const submitParamsParsed = submitMcqParamsSchema.safeParse(req.params);
+    if (!submitParamsParsed.success) {
+        return fail(res, "QUESTION_NOT_FOUND", 404);
+    }
+    const params = submitParamsParsed.data;
+
+    try {
+        if (!req.auth) return;
+
+        const result = await submitMcqAnswer({
+            contestId: params.contestId,
+            questionId: params.questionId,
+            userId: req.auth.userId,
+            selectedOptionIndex: body.selectedOptionIndex,
+        });
+
+        if (!result.ok) {
+            if (result.error === "QUESTION_NOT_FOUND") return fail(res, "QUESTION_NOT_FOUND", 404);
+            if (result.error === "FORBIDDEN") return fail(res, "FORBIDDEN", 403);
+            if (result.error === "ALREADY_SUBMITTED") return fail(res, "ALREADY_SUBMITTED", 400);
+            if (result.error === "CONTEST_NOT_ACTIVE") return fail(res, "CONTEST_NOT_ACTIVE", 400);
+            return fail(res, "INVALID_REQUEST", 400);
+        }
+
+        return ok(res, { isCorrect: result.isCorrect, pointsEarned: result.pointsEarned }, 201);
+    } catch (err) {
+        return next(err);
+    }
+}
+
+export async function addDsaProblemHandler(req: Request, res: Response, next: NextFunction) {
+    const body = parseBody(addDsaProblemSchema, req.body, res);
+    if (!body) return;
+
+    const contestParamsParsed = contestIdParamSchema.safeParse(req.params);
+    if (!contestParamsParsed.success) {
+        return fail(res, "CONTEST_NOT_FOUND", 404);
+    }
+    const params = contestParamsParsed.data;
+
+    try {
+        const created = await addDsaProblemToContest({
+            contestId: params.contestId,
+            title: body.title,
+            description: body.description,
+            tags: body.tags,
+            points: body.points,
+            timeLimit: body.timeLimit,
+            memoryLimit: body.memoryLimit,
+            testCases: body.testCases,
+        });
+
+        if (!created) {
+            return fail(res, "CONTEST_NOT_FOUND", 404);
+        }
+
+        return ok(res, { id: created.id, contestId: created.contestId }, 201);
+    } catch (err) {
+        return next(err);
+    }
+}
+
+export async function getContestLeaderboardHandler(req: Request, res: Response, next: NextFunction) {
+    const parsed = contestIdParamSchema.safeParse(req.params);
+    if (!parsed.success) {
+        return fail(res, "CONTEST_NOT_FOUND", 404);
+    }
+    const params = parsed.data;
+
+    try {
+        const rows = await getContestLeaderboard(params.contestId);
+        if (!rows) {
+            return fail(res, "CONTEST_NOT_FOUND", 404);
+        }
+
+        return ok(res, rows, 200);
     } catch (err) {
         return next(err);
     }

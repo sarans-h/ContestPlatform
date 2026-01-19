@@ -28,7 +28,7 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
 		return ok(res, result.user, 201);
 	} catch (error) {
 		if (error instanceof EmailAlreadyUsedError) {
-			return fail(res, "EMAIL_ALREADY_USED", 409);
+			return fail(res, "EMAIL_ALREADY_EXISTS", 400);
 		}
 		return next(error);
 	}

@@ -6,7 +6,7 @@ const router = Router();
 
 router.use(requireAuth);
 
-router.get("/", requireRole("CREATOR"), getUsers);
+router.get("/", requireRole("creator"), getUsers);
 router.get("/:id", requireSelfOrCreator("id"), getUser);
 router.patch("/:id", requireSelfOrCreator("id"), patchUser);
 router.delete("/:id", requireSelfOrCreator("id"), removeUser);

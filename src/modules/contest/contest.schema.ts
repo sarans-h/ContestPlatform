@@ -23,6 +23,23 @@ export const contestIdParamSchema = z
 
 export type ContestIdParams = z.infer<typeof contestIdParamSchema>;
 
+export const submitMcqParamsSchema = z
+  .object({
+    contestId: z.string().uuid(),
+    questionId: z.string().uuid(),
+  })
+  .strict();
+
+export type SubmitMcqParams = z.infer<typeof submitMcqParamsSchema>;
+
+export const submitMcqBodySchema = z
+  .object({
+    selectedOptionIndex: z.number().int().min(0),
+  })
+  .strict();
+
+export type SubmitMcqBody = z.infer<typeof submitMcqBodySchema>;
+
 export const addMcqQuestionSchema = z
   .object({
     questionText: z.string().min(1).max(5000),
@@ -36,3 +53,25 @@ export const addMcqQuestionSchema = z
   });
 
 export type AddMcqQuestionBody = z.infer<typeof addMcqQuestionSchema>;
+
+const testCaseSchema = z
+  .object({
+    input: z.string().min(1).max(50_000),
+    expectedOutput: z.string().min(1).max(50_000),
+    isHidden: z.boolean().optional().default(false),
+  })
+  .strict();
+
+export const addDsaProblemSchema = z
+  .object({
+    title: z.string().min(1).max(200),
+    description: z.string().min(1).max(50_000),
+    tags: z.array(z.string().min(1).max(50)).max(25).optional().default([]),
+    points: z.number().int().min(1).max(100_000).optional().default(100),
+    timeLimit: z.number().int().min(1).max(60_000).optional().default(2000),
+    memoryLimit: z.number().int().min(1).max(8192).optional().default(256),
+    testCases: z.array(testCaseSchema).min(1).max(200),
+  })
+  .strict();
+
+export type AddDsaProblemBody = z.infer<typeof addDsaProblemSchema>;
