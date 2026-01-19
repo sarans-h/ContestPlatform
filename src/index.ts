@@ -1,7 +1,6 @@
 import express, { type Request, type Response } from "express";
 import { prisma } from "./lib/prisma.ts";
 import authRoutes from "./modules/auth/auth.route.ts";
-import userRoutes from "./modules/user/user.route.ts";
 import contestRoutes from "./modules/contest/contest.route.ts"
 import problemRoutes from "./modules/problem/problem.route.ts";
 import { errorHandler, notFoundHandler } from "./middleware/error.middleware.ts";
@@ -25,8 +24,6 @@ app.get("/health/db", async (_req: Request, res: Response) => {
 });
 
 app.use("/api/auth", authRoutes);
-app.use("/api/v1/auth", authRoutes);
-app.use("/api/v1/users", userRoutes);
 app.use("/api/contests",contestRoutes);
 app.use("/api/problems", problemRoutes);
 app.use(notFoundHandler);
